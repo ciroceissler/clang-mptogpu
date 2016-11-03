@@ -4223,6 +4223,9 @@ OMPClause *Sema::ActOnOpenMPSingleExprClause(OpenMPClauseKind Kind, Expr *Expr,
   case OMPC_device:
     Res = ActOnOpenMPDeviceClause(Expr, StartLoc, EndLoc);
     break;
+  case OMPC_hwlib:
+    Res = ActOnOpenMPHwlibClause(Expr, StartLoc, EndLoc);
+    break;
   default:
     break;
   }
@@ -4411,6 +4414,13 @@ OMPClause *Sema::ActOnOpenMPDeviceClause(Expr *Device, SourceLocation StartLoc,
   }
 
   return new (Context) OMPDeviceClause(ValExpr, StartLoc, EndLoc);
+}
+
+OMPClause *Sema::ActOnOpenMPHwlibClause(Expr *Hwlib, SourceLocation StartLoc,
+                                        SourceLocation EndLoc) {
+  Expr *ValExpr = Hwlib;
+
+  return new (Context) OMPHwlibClause(ValExpr, StartLoc, EndLoc);
 }
 
 Expr *Sema::ActOnConstantPositiveSubExpressionInClause(Expr *E) {

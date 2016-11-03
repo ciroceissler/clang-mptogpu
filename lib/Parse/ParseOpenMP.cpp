@@ -1340,6 +1340,9 @@ OMPClause *Parser::ParseOpenMPClause(OpenMPDirectiveKind DKind,
 
     Clause = ParseOpenMPSingleExprClause(CKind);
     break;
+  case OMPC_hwlib:
+    Clause = ParseOpenMPSingleExprClause(CKind);
+    break;
   case OMPC_default:
   case OMPC_proc_bind:
     // OpenMP [2.14.3.1, Restrictions]

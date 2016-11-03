@@ -1359,6 +1359,16 @@ public:
     return getSema().ActOnOpenMPDeviceClause(Device, StartLoc, EndLoc);
   }
 
+  /// \brief Build a new OpenMP 'hwlib' clause.
+  ///
+  /// By default, performs semantic analysis to build the new statement.
+  /// Subclasses may override this routine to provide different behavior.
+  OMPClause *RebuildOMPHwlibClause(Expr *Device,
+                                   SourceLocation StartLoc,
+                                   SourceLocation EndLoc) {
+    return getSema().ActOnOpenMPHwlibClause(Device, StartLoc, EndLoc);
+  }
+
   /// \brief Build a new OpenMP 'default' clause.
   ///
   /// By default, performs semantic analysis to build the new OpenMP clause.
@@ -7247,6 +7257,19 @@ TreeTransform<Derived>::TransformOMPDeviceClause(OMPDeviceClause *C) {
 
   return getDerived().RebuildOMPDeviceClause(E.get(), C->getLocStart(),
                                              C->getLocEnd());
+}
+
+template <typename Derived>
+OMPClause *
+TreeTransform<Derived>::TransformOMPHwlibClause(OMPHwlibClause *C) {
+  // Transform expression.
+  ExprResult E = getDerived().TransformExpr(C->getHwlib());
+
+  if (E.isInvalid())
+    return 0;
+
+  return getDerived().RebuildOMPHwlibClause(E.get(), C->getLocStart(),
+                                            C->getLocEnd());
 }
 
 template <typename Derived>

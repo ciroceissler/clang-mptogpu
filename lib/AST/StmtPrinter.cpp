@@ -329,13 +329,13 @@ void StmtPrinter::VisitMSDependentExistsStmt(MSDependentExistsStmt *Node) {
     OS << "__if_exists (";
   else
     OS << "__if_not_exists (";
-  
+
   if (NestedNameSpecifier *Qualifier
         = Node->getQualifierLoc().getNestedNameSpecifier())
     Qualifier->print(OS, Policy);
-  
+
   OS << Node->getNameInfo() << ") ";
-  
+
   PrintRawCompoundStmt(Node->getSubStmt());
 }
 
@@ -626,6 +626,12 @@ void OMPClausePrinter::VisitOMPCollapseClause(OMPCollapseClause *Node) {
 void OMPClausePrinter::VisitOMPDeviceClause(OMPDeviceClause *Node) {
   OS << "device(";
   Node->getDevice()->printPretty(OS, 0, Policy, 0);
+  OS << ")";
+}
+
+void OMPClausePrinter::VisitOMPHwlibClause(OMPHwlibClause *Node) {
+  OS << "hwlib(";
+  Node->getHwlib()->printPretty(OS, 0, Policy, 0);
   OS << ")";
 }
 
@@ -1256,7 +1262,7 @@ void StmtPrinter::VisitObjCPropertyRefExpr(ObjCPropertyRefExpr *Node) {
 }
 
 void StmtPrinter::VisitObjCSubscriptRefExpr(ObjCSubscriptRefExpr *Node) {
-  
+
   PrintExpr(Node->getBaseExpr());
   OS << "[";
   PrintExpr(Node->getKeyExpr());
@@ -1453,12 +1459,12 @@ void StmtPrinter::VisitOffsetOfExpr(OffsetOfExpr *Node) {
     IdentifierInfo *Id = ON.getFieldName();
     if (!Id)
       continue;
-    
+
     if (PrintedSomething)
       OS << ".";
     else
       PrintedSomething = true;
-    OS << Id->getName();    
+    OS << Id->getName();
   }
   OS << ")";
 }
@@ -2340,7 +2346,7 @@ void StmtPrinter::VisitObjCDictionaryLiteral(ObjCDictionaryLiteral *E) {
   for (unsigned I = 0, N = E->getNumElements(); I != N; ++I) {
     if (I > 0)
       OS << ", ";
-    
+
     ObjCDictionaryElement Element = E->getKeyValueElement(I);
     Visit(Element.Key);
     OS << " : ";
@@ -2449,7 +2455,7 @@ void StmtPrinter::VisitBlockExpr(BlockExpr *Node) {
   OS << "{ }";
 }
 
-void StmtPrinter::VisitOpaqueValueExpr(OpaqueValueExpr *Node) { 
+void StmtPrinter::VisitOpaqueValueExpr(OpaqueValueExpr *Node) {
   PrintExpr(Node->getSourceExpr());
 }
 

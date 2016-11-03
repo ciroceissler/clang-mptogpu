@@ -1696,6 +1696,10 @@ void OMPClauseWriter::VisitOMPDeviceClause(OMPDeviceClause *C) {
   Writer.AddStmt(C->getDevice());
 }
 
+void OMPClauseWriter::VisitOMPHwlibClause(OMPHwlibClause *C) {
+  Writer.AddStmt(C->getHwlib());
+}
+
 void OMPClauseWriter::VisitOMPDefaultClause(OMPDefaultClause *C) {
   Record.push_back(C->getDefaultKind());
   Writer.AddSourceLocation(C->getDefaultKindLoc(), Record);

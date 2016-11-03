@@ -1998,6 +1998,8 @@ void OMPClauseEnqueue::VisitOMPProcBindClause(const OMPProcBindClause *C) {}
 
 void OMPClauseEnqueue::VisitOMPDeviceClause(const OMPDeviceClause *C) {}
 
+void OMPClauseEnqueue::VisitOMPHwlibClause(const OMPHwlibClause *C) {}
+
 void OMPClauseEnqueue::VisitOMPScheduleClause(const OMPScheduleClause *C) {}
 
 void

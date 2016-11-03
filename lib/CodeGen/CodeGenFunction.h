@@ -2186,7 +2186,9 @@ public:
   void EmitInitOMPProcBindClause(const OMPProcBindClause &C,
                                  const OMPExecutableDirective &S);
   void EmitInitOMPDeviceClause(const OMPDeviceClause &C,
-                            const OMPExecutableDirective &S);
+                               const OMPExecutableDirective &S);
+  void EmitInitOMPHwlibClause(const OMPHwlibClause&C,
+                              const OMPExecutableDirective &S);
   void EmitInitOMPMapClause(const OMPMapClause &C,
                             const OMPExecutableDirective &S);
   void EmitSyncMapClauses(const int VType);

@@ -1692,6 +1692,9 @@ OMPClause *OMPClauseReader::readClause() {
   case OMPC_device:
     C = new (Context) OMPDeviceClause();
     break;
+  case OMPC_hwlib:
+    C = new (Context) OMPHwlibClause();
+    break;
   case OMPC_default:
     C = new (Context) OMPDefaultClause();
     break;
@@ -1816,6 +1819,10 @@ void OMPClauseReader::VisitOMPCollapseClause(OMPCollapseClause *C) {
 
 void OMPClauseReader::VisitOMPDeviceClause(OMPDeviceClause *C) {
   C->setDevice(Reader.ReadSubExpr());
+}
+
+void OMPClauseReader::VisitOMPHwlibClause(OMPHwlibClause *C) {
+  C->setHwlib(Reader.ReadSubExpr());
 }
 
 void OMPClauseReader::VisitOMPDefaultClause(OMPDefaultClause *C) {

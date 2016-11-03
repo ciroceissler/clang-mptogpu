@@ -372,6 +372,57 @@ public:
   StmtRange children() { return StmtRange(&Device, &Device + 1); }
 };
 
+/// \brief This represents 'hwlib' clause in the '#pragma omp ...'
+/// directive.
+///
+/// \code
+/// #pragma omp target hwlib(a)
+/// \endcode
+/// In this example directive '#pragma omp target' has clause 'hwlib'
+/// with single expression 'a'.
+///
+class OMPHwlibClause : public OMPClause {
+  friend class OMPClauseReader;
+
+  /// \brief hardware lib name.
+  Stmt *Hwlib;
+
+  /// \brief Set the hardware lib name.
+  ///
+  /// \param E hardware lib name.
+  ///
+  void setHwlib(Expr *E) { Hwlib = E; }
+
+public:
+  /// \brief Build 'hwlib' clause.
+  ///
+  /// \param E Expression associated with this clause.
+  /// \param StartLoc Starting location of the clause.
+  /// \param EndLoc Ending location of the clause.
+  ///
+  OMPHwlibClause(Expr *E, SourceLocation StartLoc, SourceLocation EndLoc)
+      : OMPClause(OMPC_hwlib, StartLoc, EndLoc), Hwlib(E) {}
+
+  /// \brief Build an empty clause.
+  ///
+  explicit OMPHwlibClause()
+      : OMPClause(OMPC_hwlib, SourceLocation(), SourceLocation()), Hwlib(NULL) {}
+
+  /// \brief Return hardware lib name.
+  Expr *getHwlib() { return dyn_cast_or_null<Expr>(Hwlib); }
+
+  /// \brief Return hardware lib name.
+  Expr *getHwlib() const { return dyn_cast_or_null<Expr>(Hwlib); }
+
+  static bool classof(const OMPClause *T) {
+    return T->getClauseKind() == OMPC_hwlib;
+  }
+
+  StmtRange children() { return StmtRange(); }
+
+};
+
+
 /// \brief This represents 'default' clause in the '#pragma omp ...' directive.
 ///
 /// \code

@@ -7717,6 +7717,9 @@ public:
   /// \brief Called on well-formed 'device' clause.
   OMPClause *ActOnOpenMPDeviceClause(Expr *Device, SourceLocation StartLoc,
                                      SourceLocation EndLoc);
+  /// \brief Called on well-formed 'hwlib' clause.
+  OMPClause *ActOnOpenMPHwlibClause(Expr *Hwlib, SourceLocation StartLoc,
+                                    SourceLocation EndLoc);
   /// \brief Called on well-formed 'collapse' clause.
   OMPClause *ActOnOpenMPCollapseClause(Expr *NumLoops, SourceLocation StartLoc,
                                        SourceLocation EndLoc);

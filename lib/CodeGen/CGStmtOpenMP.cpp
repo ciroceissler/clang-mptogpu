@@ -3231,6 +3231,9 @@ void CodeGenFunction::EmitInitOMPClause(const OMPClause &C,
   case OMPC_device:
     EmitInitOMPDeviceClause(cast<OMPDeviceClause>(C), S);
     break;
+  case OMPC_hwlib:
+    EmitInitOMPHwlibClause(cast<OMPHwlibClause>(C), S);
+    break;
   case OMPC_default:
   case OMPC_schedule:
   case OMPC_dist_schedule:
@@ -3595,6 +3598,12 @@ CodeGenFunction::EmitInitOMPDeviceClause(const OMPDeviceClause &C,
       Builder.CreateIntCast(Tmp.getScalarVal(),CGM.Int32Ty,false);
 
   CGM.OpenMPSupport.setOffloadingDevice(DeviceID);
+}
+
+void
+CodeGenFunction::EmitInitOMPHwlibClause(const OMPHwlibClause &C,
+                                        const OMPExecutableDirective &) {
+  printf(" ---------------- aqui");
 }
 
 void

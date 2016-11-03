@@ -193,6 +193,7 @@ OPENMP_DIRECTIVE_EXT(target_teams_distribute_parallel_for_simd,
 OPENMP_CLAUSE(if, OMPIfClause)
 OPENMP_CLAUSE(num_threads, OMPNumThreadsClause)
 OPENMP_CLAUSE(device, OMPDeviceClause)
+OPENMP_CLAUSE(hwlib, OMPHwlibClause)
 OPENMP_CLAUSE(final, OMPFinalClause)
 OPENMP_CLAUSE(default, OMPDefaultClause)
 OPENMP_CLAUSE(proc_bind, OMPProcBindClause)
@@ -464,6 +465,7 @@ OPENMP_CANCEL_CLAUSE(if)
 OPENMP_TARGET_CLAUSE(if)
 OPENMP_TARGET_CLAUSE(device)
 OPENMP_TARGET_CLAUSE(map)
+OPENMP_TARGET_CLAUSE(hwlib)
 
 // Clauses allowed for OpenMP directive 'target data'.
 OPENMP_TARGET_DATA_CLAUSE(if)
