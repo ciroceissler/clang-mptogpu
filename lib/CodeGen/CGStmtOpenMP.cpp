@@ -36,6 +36,7 @@
 #include "llvm/IR/CallSite.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/Debug.h"
 
 using namespace clang;
 using namespace CodeGen;
@@ -46,15 +47,15 @@ namespace {
 //
 std::vector<std::pair<int,std::string>> vectorNames[8];
 std::vector<std::pair<int,std::string>> scalarNames[8];
-  
+
 std::map<llvm::Value *, std::string> vectorMap;
 std::map<std::string, llvm::Value *> scalarMap;
-  
+
 bool isTargetDataIf = false;
 int TargetDataIfRegion = 0;
 bool insideTarget = false;
 
-llvm::SmallVector<QualType, 16> deftypes;  
+llvm::SmallVector<QualType, 16> deftypes;
 static bool dumpedDefType(const QualType* T) {
   for (ArrayRef<QualType>::iterator I  = deftypes.begin(),
 	                            E  = deftypes.end();
@@ -79,9 +80,9 @@ struct Required
   }
   private:
   std::string val_;
-};  
+};
 
-  
+
 // Getters for fields of the loop-like directives. We may want to add a
 // common parent to all the loop-like directives to get rid of these.
 
@@ -928,7 +929,7 @@ llvm::StringRef getVarNameAsString (llvm::Value *FV) {
   if (isa<llvm::CastInst>(LV)) LV = cast<llvm::CastInst>(LV)->getOperand(0);
   if (isa<llvm::GetElementPtrInst>(LV)) LV = cast<llvm::GetElementPtrInst>(LV)->getPointerOperand();
   if (isa<llvm::LoadInst>(LV)) LV = cast<llvm::LoadInst>(LV)->getPointerOperand();
-  return LV->getName(); 
+  return LV->getName();
 }
 
 //
@@ -946,17 +947,17 @@ llvm::Type* getVarType (llvm::Value *FV) {
   return LTy;
 }
 
-//    
+//
 // Recursively transverse the body of the for loop looking for uses or assigns.
 //
 void CodeGenFunction::HandleStmts(Stmt *ST, llvm::raw_fd_ostream &FOS, int &num_args, bool CLgen) {
-  llvm::Value *Status = nullptr;  
+  llvm::Value *Status = nullptr;
 
   if(isa<DeclRefExpr>(ST)) {
     DeclRefExpr *D = dyn_cast<DeclRefExpr>(ST);
     llvm::Value *BodyVar = EmitSpirDeclRefLValue(D);
-   
-    if (BodyVar) {	     
+
+    if (BodyVar) {
       const NamedDecl *ND = D->getDecl();
       if (!CGM.OpenMPSupport.inLocalScope(BodyVar)) {
 	if (CLgen) {
@@ -965,7 +966,7 @@ void CodeGenFunction::HandleStmts(Stmt *ST, llvm::raw_fd_ostream &FOS, int &num_
 	    llvm::Value *BVRef  = Builder.CreateBitCast(BodyVar, CGM.VoidPtrTy);
 	    llvm::Value *CArg[] = { Builder.getInt32(num_args++),
 				    Builder.getInt32((dyn_cast<llvm::AllocaInst>(BodyVar)->getAllocatedType())->getPrimitiveSizeInBits()/8), BVRef };
-	    Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_set_kernel_hostArg(), CArg);	    
+	    Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_set_kernel_hostArg(), CArg);
 	    FOS << ",\n";
 	    FOS << D->getType().getAsString() << " " << ND->getDeclName();
 	  }
@@ -976,15 +977,15 @@ void CodeGenFunction::HandleStmts(Stmt *ST, llvm::raw_fd_ostream &FOS, int &num_
 	    FOS << "\t" << D->getType().getAsString() << " " << ND->getDeclName() << ";\n";
 	}
       }
-    }   
+    }
   }
-  
+
   // Get the children of the current node in the AST and call the function recursively
   for(Stmt::child_iterator I = ST->child_begin(),
 	                   E = ST->child_end();
                            I != E; ++I) {
     if(*I != NULL) HandleStmts(*I, FOS, num_args, CLgen);
-  }	
+  }
 }
 
 ///
@@ -1007,7 +1008,7 @@ llvm::Value *CodeGenFunction::EmitHostParameters (ForStmt *FS,
   llvm::Value *IVal    = nullptr;
   Expr *init           = nullptr;
   std::string initType;
-  
+
   if (isa<DeclStmt>(FS->getInit())) {
     llvm_unreachable("for statement in Non-Canonical form is not supported!");
     return nullptr;
@@ -1043,7 +1044,7 @@ llvm::Value *CodeGenFunction::EmitHostParameters (ForStmt *FS,
   default:
     break;
   }
-							  
+
   // Check the increment type (i=i(+/-)incr, i(+/-)=incr, i(++/--))
   Expr *inc = FS->getInc();
   if(isa<CompoundAssignOperator>(inc)) {	// i(+/-)=incr
@@ -1084,9 +1085,9 @@ llvm::Value *CodeGenFunction::EmitHostParameters (ForStmt *FS,
     cond = COND->getLHS();
   else // !isIncrement && !isLesser
     cond = COND->getRHS();
-    
+
   B = EmitAnyExprToTemp(cond).getScalarVal();
-    
+
   llvm::Value *MIN;
   if(isIncrement) {
     MIN = A;
@@ -1097,8 +1098,8 @@ llvm::Value *CodeGenFunction::EmitHostParameters (ForStmt *FS,
     else
       MIN = Builder.CreateAdd(B, Builder.getInt32(1));
   }
-  
-  std::string IName = getVarNameAsString(IVal);    
+
+  std::string IName = getVarNameAsString(IVal);
   llvm::AllocaInst *AL = Builder.CreateAlloca(B->getType(), NULL);
   AL->setUsedWithInAlloca(true);
 
@@ -1111,12 +1112,12 @@ llvm::Value *CodeGenFunction::EmitHostParameters (ForStmt *FS,
   Builder.CreateStore(nCores, AL);
 
   // Create hostArg to represent _UB_n (i.e., nCores)
-  llvm::Value *CVRef = Builder.CreateBitCast(AL, CGM.VoidPtrTy);	
+  llvm::Value *CVRef = Builder.CreateBitCast(AL, CGM.VoidPtrTy);
   llvm::Value *CArg[] = {Builder.getInt32(num_args++),
-			 Builder.getInt32((AL->getAllocatedType())->getPrimitiveSizeInBits()/8), CVRef};	
+			 Builder.getInt32((AL->getAllocatedType())->getPrimitiveSizeInBits()/8), CVRef};
   Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_set_kernel_hostArg(), CArg);
-  
-  if (Collapse) {    
+
+  if (Collapse) {
     FOS << initType;
     FOS << " _UB_" << loopNest << ", ";
     FOS << initType;
@@ -1129,7 +1130,7 @@ llvm::Value *CodeGenFunction::EmitHostParameters (ForStmt *FS,
 
     // Create hostArg to represent _MIN_n
     llvm::Value *CArg2[] = {Builder.getInt32(num_args++),
-	  		    Builder.getInt32((AL2->getAllocatedType())->getPrimitiveSizeInBits()/8), CVRef2};	
+	  		    Builder.getInt32((AL2->getAllocatedType())->getPrimitiveSizeInBits()/8), CVRef2};
     Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_set_kernel_hostArg(), CArg2);
 
     FOS << initType;
@@ -1143,7 +1144,7 @@ llvm::Value *CodeGenFunction::EmitHostParameters (ForStmt *FS,
 
     // Create hostArg to represent _INC_n
     llvm::Value *CArg3[] = {Builder.getInt32(num_args++),
-			    Builder.getInt32((AL3->getAllocatedType())->getPrimitiveSizeInBits()/8), CVRef3};	
+			    Builder.getInt32((AL3->getAllocatedType())->getPrimitiveSizeInBits()/8), CVRef3};
     Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_set_kernel_hostArg(), CArg3);
   }
   else {
@@ -1159,9 +1160,9 @@ llvm::Value *CodeGenFunction::EmitHostParameters (ForStmt *FS,
     }
     else
       llvm_unreachable("for statement in Non-Canonical form is not supported!");         }
-  
-  return nCores;  
-  
+
+  return nCores;
+
 }
 
 ///
@@ -1196,7 +1197,7 @@ unsigned CodeGenFunction::GetNumNestedLoops(const OMPParallelForDirective &S) {
 }
 
 ///
-/// Generate an instructions for '#pragma omp parallel for' directive. 
+/// Generate an instructions for '#pragma omp parallel for' directive.
 ///
 void CodeGenFunction::EmitOMPParallelForDirective(
     const OMPParallelForDirective &S) {
@@ -1226,15 +1227,15 @@ void CodeGenFunction::EmitOMPParallelForDirective(
     const std::string AuxName = FileName + ".tmp";
     std::string Error;
     llvm::raw_fd_ostream AXOS(AuxName.c_str(), Error, llvm::sys::fs::F_Text);
-    
+
     // Add the basic c header files.
     // Maybe is necessary to including those specified by the user (?)
     CLOS << "#include <stdlib.h>\n";
     CLOS << "#include <math.h>\n";
-    
+
     //use of type 'double' requires cl_khr_fp64 extension to be enabled
     AXOS << "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n";
-    
+
     ArrayRef<llvm::Value*> MapClausePointerValues;
     ArrayRef<llvm::Value*> MapClauseSizeValues;
     ArrayRef<QualType> MapClauseQualTypes;
@@ -1294,10 +1295,10 @@ void CodeGenFunction::EmitOMPParallelForDirective(
     CGM.OpenMPSupport.clearKernelVars();
     CGM.OpenMPSupport.clearLocalVars();
     scalarMap.clear();
-    
+
     CLOS << "void foo (\n";
     AXOS << "\n__kernel void " << FileName << " (\n";
-    
+
     int j = 0;
     bool needComma = false;
     for (ArrayRef<llvm::Value*>::iterator I  = MapClausePointerValues.begin(),
@@ -1312,7 +1313,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
       CGM.OpenMPSupport.addScopType(QT);
       CGM.OpenMPSupport.addKernelVar(KV);
       CGM.OpenMPSupport.addKernelType(QT);
-      
+
       bool isPointer = false;
       const Type *ty = QT.getTypePtr();
       if (ty->isPointerType() || ty->isReferenceType()) {
@@ -1328,11 +1329,11 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	AXOS << "__global "; //Unfortunately, spir 1.2 don't support const attr
       else
 	AXOS << "__global ";
-      
+
       j++;
 
       AXOS << QT.getAsString();
-      if (needComma) CLOS << ",\n"; 
+      if (needComma) CLOS << ",\n";
       CLOS << "\t\t" << QT.getAsString();
       needComma = true;
       if (isPointer) {
@@ -1371,8 +1372,8 @@ void CodeGenFunction::EmitOMPParallelForDirective(
     else {
       HandleStmts(Body, CLOS, num_args, false);
     }
-    
-    CLOS << "\n#pragma scop\n";    
+
+    CLOS << "\n#pragma scop\n";
     Body->printPretty(CLOS, nullptr, PrintingPolicy(getContext().getLangOpts()), 8);
     CLOS << "\n#pragma endscop\n}\n";
     CLOS.close();
@@ -1382,10 +1383,10 @@ void CodeGenFunction::EmitOMPParallelForDirective(
     int kernelId, upperKernel = 0;
     int k = 0;
     std::vector<std::pair<int,std::string>> pName;
-    
+
     if (!scheduleParametric) {
       const std::string rmFile = "rm " + FileName;
-      std::system(rmFile.c_str());      
+      std::system(rmFile.c_str());
     } else {
       // Change the temporary name to c name
       const std::string cName  = FileName + ".c";
@@ -1434,7 +1435,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	    hasScheduleStatic = ScheduleKind == OMPC_SCHEDULE_static;
 	    Expr *CSExpr =  C->getChunkSize();
 	    if (CSExpr) {
-	      llvm::APSInt Ch;	    
+	      llvm::APSInt Ch;
 	      if (CSExpr->EvaluateAsInt(Ch, CGM.getContext())) {
 		ChunkSize = "--tile-size=" + Ch.toString(10) + " ";
 	      }
@@ -1443,7 +1444,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	}
       }
 
-      std::string pcg;    
+      std::string pcg;
       if (verbose) {
 	pcg = "clang-pcg --verbose " + ChunkSize;
 	if (hasScheduleStatic) pcg = pcg + "--no-reschedule ";
@@ -1476,7 +1477,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	    argFile >> kernelId;
 	    assert(kernelId == last_KernelId && "Invalid kernel structure");
 	    argFile >> blockSizes[kernelId][0] >> blockSizes[kernelId][1] >> blockSizes[kernelId][2];
-	    argFile >> kernelId;	  
+	    argFile >> kernelId;
 	    assert(kernelId == last_KernelId && "Invalid kernel structure");
 	  }
 	  argFile >> kind >> index >> arg_name;
@@ -1490,18 +1491,18 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	upperKernel = kernelId;
 	argFile.close();
       }
-    
+
       if (!verbose) {
 	const std::string rmAfile = "rm " + FileName;
-	std::system(rmAfile.c_str());    
+	std::system(rmAfile.c_str());
       }
     }
-    
+
     // Emit code to load the file that contain the kernels
-    llvm::Value *Status = nullptr;   
+    llvm::Value *Status = nullptr;
     llvm::Value *FileStr = Builder.CreateGlobalStringPtr(FileName);
     Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_create_program(), FileStr);
-    
+
     // CLgen control whether we need to generate original code
     // if scheduleParametric but workSizes = 0, means Polyhedral do not work.
     // In this case Gen original code
@@ -1531,7 +1532,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
       llvm::Value *Args[] = {Builder.getInt32(num_args)};
       Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_set_kernel_args(), Args);
     }
-    
+
     // Look for CollapseNum
     bool hasCollapseClause = false;
     unsigned CollapseNum, loopNest;
@@ -1560,7 +1561,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
     if (CapturedStmt *CS = dyn_cast_or_null<CapturedStmt>(Body)) {
       Body = CS->getCapturedStmt();
     }
-    
+
     if (CLgen) {
       ForStmt *For;
       unsigned nLoops = CollapseNum;
@@ -1584,7 +1585,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	  assert(0 && "Unexpected stmt in the loop nest");
 	}
       }
-    
+
       assert(Body && "Failed to extract the loop body");
 
       if (loopNest > CollapseNum) {
@@ -1601,13 +1602,13 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	  } else if (CompoundStmt *CS = dyn_cast<CompoundStmt>(Aux)) {
 	    if (CS->size() == 1) {
 	      Aux = CS->body_back();
-	    } else {	
+	    } else {
 	      assert(0 && "Unexpected compound stmt in the loop nest");
 	    }
 	  }
 	}
       }
-    
+
       // Traverse again the Body looking for scalar variables declared out of
       // "for" scope and generate value reference to pass to kernel function
       if (Body->getStmtClass() == Stmt::CompoundStmtClass) {
@@ -1628,13 +1629,13 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	AXOS << "int _ID_" << i << " = get_global_id(" << i << ");\n   ";
 
       SmallVector<llvm::Value*,16> LocalVars;
-      CGM.OpenMPSupport.getLocalVars(LocalVars);    
+      CGM.OpenMPSupport.getLocalVars(LocalVars);
       for (unsigned i=0; i<CollapseNum; ++i) {
 	std::string IName = getVarNameAsString(LocalVars[i]);
 	AXOS << "int " << IName << " = _INC_" << i;
 	AXOS << " * _ID_" << i << " + _MIN_" << i << ";\n   ";
       }
-    
+
       if (CollapseNum == 1) {
 	AXOS << "  if ( _ID_0 < _UB_0 )\n";
       }
@@ -1644,7 +1645,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
       else {
 	AXOS << "  if ( _ID_0 < _UB_0 && _ID_1 < _UB_1 && _ID_2 < _UB_2 )\n";
       }
-    
+
       if (isa<CompoundStmt>(Body)) {
 	Body->printPretty(AXOS, nullptr, PrintingPolicy(getContext().getLangOpts()));
 	AXOS << "\n}\n";
@@ -1654,13 +1655,13 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	Body->printPretty(AXOS, nullptr, PrintingPolicy(getContext().getLangOpts()), 8);
 	AXOS << ";\n }\n}\n";
       }
-      
+
       // Close the kernel file
       AXOS.close();
 
       // Change the auxiliary name to OpenCL kernel name
       rename(AuxName.c_str(), clName.c_str());
-    
+
     }
     else {
       // AXOS was not used. Remove it.
@@ -1668,7 +1669,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
       const std::string rmAuxfile = "rm " + AuxName;
       std::system(rmAuxfile.c_str());
     }
-    
+
     // Generate the spir-code ?
     llvm::Triple Tgt = CGM.getLangOpts().OMPtoGPUTriple;
     if (Tgt.getArch() == llvm::Triple::spir || Tgt.getArch() == llvm::Triple::spir64) {
@@ -1677,19 +1678,19 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	tgtStr + " -include $LLVM_INCLUDE_PATH/llvm/SpirTools/opencl_spir.h -ffp-contract=off -o " +
 	AuxName + " " + clName;
       std::system(bcArg.c_str());
-      
+
       const std::string encodeStr = "spir-encoder " + AuxName + " " + FileName + ".bc";
       std::system(encodeStr.c_str());
 
       const std::string rmStr = "rm " + AuxName;
       std::system(rmStr.c_str());
     }
-    
+
     if (!CLgen) {
       for (kernelId=0; kernelId<=upperKernel; kernelId++) {
-	llvm::Value *KernelStr = Builder.CreateGlobalStringPtr(FileName + std::to_string(kernelId));      
+	llvm::Value *KernelStr = Builder.CreateGlobalStringPtr(FileName + std::to_string(kernelId));
 	Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_create_kernel(), KernelStr);
-	
+
 	// Set kernel args according pos & index of buffer, only if required
 	k = 0;
 	for (std::vector<std::pair<int,std::string>>::iterator I = pName.begin(),
@@ -1712,17 +1713,17 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 	                                                       E = scalarNames[kernelId].end();
 	                                                       I != E; ++I) {
 	  llvm::Value *BV = scalarMap[(I)->second];
-	  llvm::Value *BVRef = Builder.CreateBitCast(BV, CGM.VoidPtrTy);	
+	  llvm::Value *BVRef = Builder.CreateBitCast(BV, CGM.VoidPtrTy);
 	  llvm::Value *CArg[] = { Builder.getInt32((I)->first),
 				  Builder.getInt32((dyn_cast<llvm::AllocaInst>(BV)->getAllocatedType())->getPrimitiveSizeInBits()/8), BVRef };
-	  Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_set_kernel_hostArg(), CArg); 
+	  Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_set_kernel_hostArg(), CArg);
 	}
-	
+
 	int workDim;
 	if (workSizes[kernelId][2] !=0) workDim = 3;
 	else if (workSizes[kernelId][1] != 0) workDim = 2;
 	else workDim = 1;
-	
+
 	llvm::Value *GroupSize[] = {Builder.getInt32(workSizes[kernelId][0]),
 				    Builder.getInt32(workSizes[kernelId][1]),
 				    Builder.getInt32(workSizes[kernelId][2]),
@@ -1730,7 +1731,7 @@ void CodeGenFunction::EmitOMPParallelForDirective(
 				    Builder.getInt32(blockSizes[kernelId][1]),
 				    Builder.getInt32(blockSizes[kernelId][2]),
 				    Builder.getInt32(workDim)};
-	
+
 	Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_execute_tiled_kernel(), GroupSize);
       }
     }
@@ -1745,15 +1746,15 @@ void CodeGenFunction::EmitOMPParallelForDirective(
       llvm::Value *WGSize[] = {Builder.CreateIntCast(nCores[0],CGM.Int64Ty, false),
 		               Builder.CreateIntCast(nCores[1],CGM.Int64Ty, false),
 			       Builder.CreateIntCast(nCores[2],CGM.Int64Ty, false),
-			       Builder.getInt32(CollapseNum)};      
+			       Builder.getInt32(CollapseNum)};
       Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_execute_kernel(), WGSize);
     }
   }
   // ********************************
   // Not OpenCL/SPIR Code Generation
-  // ********************************  
+  // ********************************
   else EmitOMPDirectiveWithParallel(OMPD_parallel_for, OMPD_for, S);
-  
+
 }
 
 /// Generate an instructions for '#pragma omp parallel for simd' directive.
@@ -3281,6 +3282,7 @@ void CodeGenFunction::EmitAfterInitOMPClause(const OMPClause &C,
   case OMPC_schedule:
   case OMPC_dist_schedule:
   case OMPC_device:
+  case OMPC_hwlib:
   case OMPC_copyin:
   case OMPC_shared:
   case OMPC_private:
@@ -3309,6 +3311,7 @@ void CodeGenFunction::EmitPreOMPClause(const OMPClause &C,
   case OMPC_num_teams:
   case OMPC_thread_limit:
   case OMPC_device:
+  case OMPC_hwlib:
   case OMPC_if:
   case OMPC_default:
   case OMPC_proc_bind:
@@ -3364,6 +3367,7 @@ void CodeGenFunction::EmitPostOMPClause(const OMPClause &C,
   case OMPC_num_teams:
   case OMPC_thread_limit:
   case OMPC_device:
+  case OMPC_hwlib:
   case OMPC_if:
   case OMPC_copyin:
   case OMPC_copyprivate:
@@ -3409,6 +3413,7 @@ void CodeGenFunction::EmitCloseOMPClause(const OMPClause &C,
   case OMPC_num_teams:
   case OMPC_thread_limit:
   case OMPC_device:
+  case OMPC_hwlib:
   case OMPC_if:
   case OMPC_copyin:
   case OMPC_copyprivate:
@@ -3454,6 +3459,7 @@ void CodeGenFunction::EmitFinalOMPClause(const OMPClause &C,
   case OMPC_num_teams:
   case OMPC_thread_limit:
   case OMPC_device:
+  case OMPC_hwlib:
   case OMPC_copyin:
   case OMPC_copyprivate:
   case OMPC_default:
@@ -3603,7 +3609,8 @@ CodeGenFunction::EmitInitOMPDeviceClause(const OMPDeviceClause &C,
 void
 CodeGenFunction::EmitInitOMPHwlibClause(const OMPHwlibClause &C,
                                         const OMPExecutableDirective &) {
-  printf(" ---------------- aqui");
+  // TODO(ciroc): need this?!
+  llvm::errs() << "emit init OMP hwlib!";
 }
 
 void
@@ -3621,7 +3628,7 @@ CodeGenFunction::EmitInitOMPMapClause(const OMPMapClause &C,
     llvm::Value * RB = EmitAnyExprToTemp(RangeBegin[i]).getScalarVal();
     llvm::Value * RE = EmitAnyExprToTemp(RangeEnd[i]).getScalarVal();
     QualType QT = RangeBegin[i]->getType();
-    
+
     // Subtract the two pointers to obtain the size or
     // use the value directly if it is a constant
     llvm::Value *Size = RE;
@@ -3661,7 +3668,7 @@ CodeGenFunction::EmitInitOMPMapClause(const OMPMapClause &C,
 
     // Store the map data into the stack. After all map clauses are codegen,
     // the afterinit emission is going to allocate the arrays in the program
-    // stack 
+    // stack
     CGM.OpenMPSupport.addMapData(VP,VS, QT, VT);
   }
 }
@@ -6218,7 +6225,7 @@ void CodeGenFunction::EmitSyncMapClauses(const int VType) {
     if (VType == OMP_TGT_MAPTYPE_TO &&
 	MapClauseTypeValues[i] == OMP_TGT_MAPTYPE_TO) {
 
-      llvm::Value *operand = (cast<llvm::User>(MapClausePointerValues[i]))->getOperand(0);	  
+      llvm::Value *operand = (cast<llvm::User>(MapClausePointerValues[i]))->getOperand(0);
       //get the position of location in target [data] map
       llvm::Value *VMapPos = Builder.getInt32(GetMapPosition(operand, MapClauseSizeValues[i]));
       llvm::Value *Args[] = {MapClauseSizeValues[i],
@@ -6230,7 +6237,7 @@ void CodeGenFunction::EmitSyncMapClauses(const int VType) {
 	     (MapClauseTypeValues[i] == OMP_TGT_MAPTYPE_TOFROM ||
 	      MapClauseTypeValues[i] == OMP_TGT_MAPTYPE_FROM)) {
 
-      llvm::Value *operand = (cast<llvm::User>(MapClausePointerValues[i]))->getOperand(0); 
+      llvm::Value *operand = (cast<llvm::User>(MapClausePointerValues[i]))->getOperand(0);
       //get the position of location in target [data] map
       llvm::Value *VMapPos = Builder.getInt32(GetMapPosition(operand, MapClauseSizeValues[i]));
       llvm::Value *Args[] = {MapClauseSizeValues[i],
@@ -6254,11 +6261,11 @@ void CodeGenFunction::MapStmts(const Stmt *ST, llvm::Value * val) {
 	                         E  = ST->child_end();
                                  I != E; ++I) {
     if(*I != NULL) MapStmts(*I, val);
-  }	
+  }
 }
 
 void CodeGenFunction::EmitInheritedMap(int init, int count) {
-	
+
   ArrayRef<llvm::Value*> MapClausePointerValues;
   ArrayRef<llvm::Value*> MapClauseSizeValues;
   ArrayRef<QualType> MapClauseQualTypes;
@@ -6341,7 +6348,7 @@ void CodeGenFunction::EmitMapClausetoGPU(const bool DataDirective,
     const Expr *E = RangeBegin[i];
     if (isa<CastExpr>(E)) E = cast<CastExpr>(E)->getSubExprAsWritten();
     QualType VQual = E->getType();
-	
+
     int VType;
     switch(C.getKind()){
     default:
@@ -6361,7 +6368,7 @@ void CodeGenFunction::EmitMapClausetoGPU(const bool DataDirective,
       VType = OMP_TGT_MAPTYPE_ALLOC;
       break;
     }
-   
+
     //Save the position of location in the [data] map clause
     //This also define the buffer index (used to offloading)
     CGM.OpenMPSupport.addMapPos(VLoc, VSize, VQual, VType, i);
@@ -6377,7 +6384,7 @@ void CodeGenFunction::EmitOMPTargetDirective(const OMPTargetDirective &S) {
 
   // Are we generating code for GPU via OpenCL/SPIR?
   if (CGM.getLangOpts().MPtoGPU) {
-  
+
     insideTarget = true;
     bool regionStarted = false;
     bool emptyTarget = false;
@@ -6393,84 +6400,101 @@ void CodeGenFunction::EmitOMPTargetDirective(const OMPTargetDirective &S) {
       //First, check if the target directive is empty.
       //In this case, Offloading data are needed
       if (cast<OMPExecutableDirective>(S).getNumClauses() == 0) {
-	emptyTarget = true;
-	EmitSyncMapClauses (OMP_TGT_MAPTYPE_TO);
-	init = CGM.OpenMPSupport.getMapSize();
-	end = init;
+        emptyTarget = true;
+        EmitSyncMapClauses (OMP_TGT_MAPTYPE_TO);
+        init = CGM.OpenMPSupport.getMapSize();
+        end = init;
       }
-      else {     
-	if(!isTargetDataIf) {
-	  //If target clause is not empty, look for "if" clause
-	  for (ArrayRef<OMPClause *>::iterator I  = S.clauses().begin(),
-	                                       E  = S.clauses().end();
-                                 	       I != E; ++I) {
-	    OpenMPClauseKind ckind = ((*I)->getClauseKind());
-	    if (ckind == OMPC_if) {
-	      hasIfClause = true;
-	      IC = *I;
-	      isTargetDataIf = true;
-	      break;
-	    }
-	  }
-	}
+      else {
+        if(!isTargetDataIf) {
+          //If target clause is not empty, look for "if" clause
+          for (ArrayRef<OMPClause *>::iterator I  = S.clauses().begin(),
+              E  = S.clauses().end();
+              I != E; ++I) {
+            OpenMPClauseKind ckind = ((*I)->getClauseKind());
+            if (ckind == OMPC_if) {
+              hasIfClause = true;
+              IC = *I;
+              isTargetDataIf = true;
+              break;
+            }
+          }
+        }
 
-	// If the if clause is the only one then offloading data too
-	if (hasIfClause && cast<OMPExecutableDirective>(S).getNumClauses() == 1) {
-	  emptyTarget = true;
-	  EmitSyncMapClauses (OMP_TGT_MAPTYPE_TO);
-	  init = CGM.OpenMPSupport.getMapSize();
-	  end = init;
-	}
-	else { 
-	  //otherwise, look for device clause in the target directive
-	  //The device must be set before create the buffers    
-	  for (ArrayRef<OMPClause *>::iterator I  = S.clauses().begin(),
-	                                       E  = S.clauses().end();
-	                                       I != E; ++I) {
-	    OpenMPClauseKind ckind = ((*I)->getClauseKind());
-	    if (ckind == OMPC_device) {
-	      RValue Tmp = EmitAnyExprToTemp(cast<OMPDeviceClause>(*I)->getDevice());
-	      llvm::Value* clid = Builder.CreateIntCast(Tmp.getScalarVal(),CGM.Int32Ty,false);
-	      llvm::Value* func = CGM.getMPtoGPURuntime().Set_default_device(); 
-	      EmitRuntimeCall(func, makeArrayRef(clid));
-	      if (!regionStarted) {
-		regionStarted = true;
-		CGM.OpenMPSupport.startOpenMPRegion(true);
-	      }
-	      CGM.OpenMPSupport.setOffloadingDevice(Tmp.getScalarVal());
-	    }
-	  }
+        // If the if clause is the only one then offloading data too
+        if (hasIfClause && cast<OMPExecutableDirective>(S).getNumClauses() == 1) {
+          emptyTarget = true;
+          EmitSyncMapClauses (OMP_TGT_MAPTYPE_TO);
+          init = CGM.OpenMPSupport.getMapSize();
+          end = init;
+        }
+        else {
+          //otherwise, look for device clause in the target directive
+          //The device must be set before create the buffers
+          for (ArrayRef<OMPClause *>::iterator I  = S.clauses().begin(),
+              E  = S.clauses().end();
+              I != E; ++I) {
+            OpenMPClauseKind ckind = ((*I)->getClauseKind());
+            if (ckind == OMPC_device) {
+              RValue Tmp = EmitAnyExprToTemp(cast<OMPDeviceClause>(*I)->getDevice());
+              llvm::Value* clid = Builder.CreateIntCast(Tmp.getScalarVal(),CGM.Int32Ty,false);
+              llvm::Value* func = CGM.getMPtoGPURuntime().Set_default_device();
+              EmitRuntimeCall(func, makeArrayRef(clid));
+              if (!regionStarted) {
+                regionStarted = true;
+                CGM.OpenMPSupport.startOpenMPRegion(true);
+              }
+              CGM.OpenMPSupport.setOffloadingDevice(Tmp.getScalarVal());
+            }
+            else if (ckind == OMPC_hwlib) {
+              llvm::Value*   func;
+              llvm::Value*   hwlib;
+              StringLiteral* hwlib_str;
 
-	if(hasIfClause) {
-	  EmitBranchOnBoolExpr(cast<OMPIfClause>(IC)->getCondition(), ThenBlock, ElseBlock, 0);
-	  TargetDataIfRegion = 1;
-	  EmitBlock(ThenBlock);
-	}
-      
-	  //Finally, start again, looking for map clauses
-	  for (ArrayRef<OMPClause *>::iterator I  = S.clauses().begin(),
-	                                       E  = S.clauses().end();
-	                                       I != E; ++I) {
-	    OpenMPClauseKind ckind = ((*I)->getClauseKind());    
-	    if (ckind == OMPC_map) {
-	      if (!regionStarted) {
-		regionStarted = true;
-		CGM.OpenMPSupport.startOpenMPRegion(true);
-	      }
-	      CGM.OpenMPSupport.InheritMapPos();
-	      init = CGM.OpenMPSupport.getMapSize();
-	      EmitMapClausetoGPU(false, cast<OMPMapClause>(*(*I)), S);
-	      end = CGM.OpenMPSupport.getMapSize();
-	      EmitInheritedMap(init, end-init);
-	      if(first == -1) first = init;
-	      count += end - init;
-	    }
-	  }
-	}
-      }      
+              hwlib_str = cast<StringLiteral>(cast<OMPHwlibClause>(*I)->getHwlib());
+
+              func  = CGM.getMPtoGPURuntime().Set_hwlib();
+              hwlib = Builder.CreateGlobalStringPtr(hwlib_str->getString());
+
+              EmitRuntimeCall(func, hwlib);
+
+              if (!regionStarted) {
+                regionStarted = true;
+                CGM.OpenMPSupport.startOpenMPRegion(true);
+              }
+            }
+          }
+
+          if(hasIfClause) {
+            EmitBranchOnBoolExpr(cast<OMPIfClause>(IC)->getCondition(), ThenBlock, ElseBlock, 0);
+            TargetDataIfRegion = 1;
+            EmitBlock(ThenBlock);
+          }
+
+          //Finally, start again, looking for map clauses
+          for (ArrayRef<OMPClause *>::iterator I  = S.clauses().begin(),
+              E  = S.clauses().end();
+              I != E; ++I) {
+            OpenMPClauseKind ckind = ((*I)->getClauseKind());
+            if (ckind == OMPC_map) {
+              if (!regionStarted) {
+                regionStarted = true;
+                CGM.OpenMPSupport.startOpenMPRegion(true);
+              }
+              CGM.OpenMPSupport.InheritMapPos();
+              init = CGM.OpenMPSupport.getMapSize();
+              EmitMapClausetoGPU(false, cast<OMPMapClause>(*(*I)), S);
+              end = CGM.OpenMPSupport.getMapSize();
+              EmitInheritedMap(init, end-init);
+              if(first == -1) first = init;
+              count += end - init;
+            }
+          }
+        }
+      }
       //CGM.OpenMPSupport.PrintAllStack(); //Used for test purposes only
     }
-    
+
     EmitStmt(CS->getCapturedStmt());
 
     if (regionStarted || emptyTarget) {
@@ -6478,7 +6502,7 @@ void CodeGenFunction::EmitOMPTargetDirective(const OMPTargetDirective &S) {
     }
 
     if (regionStarted) {
-      ReleaseBuffers(first, count); 
+      ReleaseBuffers(first, count);
       CGM.OpenMPSupport.endOpenMPRegion();
     }
 
@@ -6492,14 +6516,14 @@ void CodeGenFunction::EmitOMPTargetDirective(const OMPTargetDirective &S) {
       isTargetDataIf = false;
       EmitBlock(ContBlock, true);
     }
-	insideTarget = false;
+    insideTarget = false;
     return;
   }
-  
+
   // **************************************************
   // Finish generating code for GPGPU (via OpenCL/SPIR)
   // **************************************************
-  
+
   // Are we generating code for a target?
   bool isTargetMode = CGM.getLangOpts().OpenMPTargetMode;
   assert( !(isTargetMode && CGM.getLangOpts().OMPTargetTriples.empty())
@@ -6833,7 +6857,7 @@ void CodeGenFunction::EmitOMPTargetDataDirective(const OMPTargetDataDirective &S
 	EmitBlock(ThenBlock);
       }
     }
- 
+
     //Now, look for device clause in the target directive
     //The device must be set before create the buffers
     for (ArrayRef<OMPClause *>::iterator I  = S.clauses().begin(),
@@ -6843,7 +6867,7 @@ void CodeGenFunction::EmitOMPTargetDataDirective(const OMPTargetDataDirective &S
       if (ckind == OMPC_device) {
 	RValue Tmp = EmitAnyExprToTemp(cast<OMPDeviceClause>(*I)->getDevice());
 	llvm::Value* clid = Builder.CreateIntCast(Tmp.getScalarVal(),CGM.Int32Ty,false);
-	llvm::Value* func = CGM.getMPtoGPURuntime().Set_default_device(); 
+	llvm::Value* func = CGM.getMPtoGPURuntime().Set_default_device();
 	EmitRuntimeCall(func, makeArrayRef(clid));
 	CGM.OpenMPSupport.setOffloadingDevice(Tmp.getScalarVal());
       }
@@ -6863,16 +6887,16 @@ void CodeGenFunction::EmitOMPTargetDataDirective(const OMPTargetDataDirective &S
 	count += end - init;
       }
     }
-  
+
     EmitStmt(CS->getCapturedStmt());
-    EmitSyncMapClauses(OMP_TGT_MAPTYPE_FROM); 
+    EmitSyncMapClauses(OMP_TGT_MAPTYPE_FROM);
 
 	ReleaseBuffers(first, count);
     if (hasIfClause) {
       EmitBranch(ContBlock);
       EmitBlock(ContBlock, true);
     }
- 
+
     CGM.OpenMPSupport.endOpenMPRegion();
 	insideTarget = false;
   }
@@ -6884,7 +6908,7 @@ void CodeGenFunction::EmitOMPTargetDataDirective(const OMPTargetDataDirective &S
 //
 unsigned int CodeGenFunction::GetMapPosition(const llvm::Value *CurOperand,
 					     const llvm::Value *CurSize) {
-	
+
   ArrayRef<llvm::Value*> MapClausePointerValues;
   ArrayRef<llvm::Value*> MapClauseSizeValues;
   ArrayRef<QualType> MapClauseQualTypes;
@@ -6904,8 +6928,8 @@ unsigned int CodeGenFunction::GetMapPosition(const llvm::Value *CurOperand,
     COper = cast<llvm::User>(COper)->getOperand(0);
     nop = dyn_cast<llvm::User>(COper)->getNumOperands();
   }
-  
-  for(unsigned i=0; i<MapClausePointerValues.size(); ++i) {    
+
+  for(unsigned i=0; i<MapClausePointerValues.size(); ++i) {
     llvm::Value *LV = MapClausePointerValues[i];
 
     unsigned oper = dyn_cast<llvm::User>(LV)->getNumOperands();
@@ -6913,12 +6937,12 @@ unsigned int CodeGenFunction::GetMapPosition(const llvm::Value *CurOperand,
       LV = cast<llvm::User>(LV)->getOperand(0);
       oper = dyn_cast<llvm::User>(LV)->getNumOperands();
     }
-    
+
     if (LV == COper) return i;
   }
-  
+
   llvm_unreachable("[data] map position for the clause not found!");
-  return 0;  
+  return 0;
 }
 
 static void GetToAddressAndSize (const OMPToClause &C,
@@ -6930,7 +6954,7 @@ static void GetToAddressAndSize (const OMPToClause &C,
 
 static void GetFromAddressAndSize (const OMPFromClause &C,
 				 ArrayRef<const Expr*> &Start,
-				 ArrayRef<const Expr*> &End) {  
+				 ArrayRef<const Expr*> &End) {
   Start = C.getCopyingStartAddresses();
   End = C.getCopyingSizesEndAddresses();
 }
@@ -6944,9 +6968,9 @@ void CodeGenFunction::EmitOMPTargetUpdateDirective(
   // *************************************************
   // Are we generating code for GPU (via OpenCL/SPIR)?
   // *************************************************
-  
+
   if (CGM.getLangOpts().MPtoGPU) {
-    
+
     bool hasIfClause = false;
     llvm::BasicBlock *ThenBlock = createBasicBlock("omp.then");
     llvm::BasicBlock *ContBlock = createBasicBlock("omp.end");
@@ -6968,7 +6992,7 @@ void CodeGenFunction::EmitOMPTargetUpdateDirective(
     for (ArrayRef<OMPClause *>::iterator I  = S.clauses().begin(),
 	                                 E  = S.clauses().end();
                                  	 I != E; ++I) {
-      
+
       OpenMPClauseKind Ckind = (*I)->getClauseKind();
       if (Ckind == OMPC_to  || Ckind == OMPC_from) {
 	ArrayRef<const Expr*> RangeBegin;
@@ -6994,10 +7018,10 @@ void CodeGenFunction::EmitOMPTargetUpdateDirective(
 	  llvm::Value *VLoc = Builder.CreateBitCast(RB,CGM.VoidPtrTy);
 	  llvm::Value *VSize = Builder.CreateIntCast(Size,CGM.Int64Ty, false);
 	  llvm::Value *operand = (cast<llvm::CastInst>(VLoc))->getOperand(0);
-	  
+
 	  //get the position of location in target [data] map
 	  llvm::Value *VMapPos = Builder.getInt32(GetMapPosition(operand, VSize));
-	  	  
+
 	  llvm::Value *Args[] = {VSize, VMapPos, VLoc};
 	  llvm::Value *Status = nullptr;
 	  if (Ckind == OMPC_from) {
@@ -7005,16 +7029,16 @@ void CodeGenFunction::EmitOMPTargetUpdateDirective(
 	  }
 	  else {
 	    Status = EmitRuntimeCall(CGM.getMPtoGPURuntime().cl_write_buffer(), Args);
-	  }	    
+	  }
 	}
       }
     }
-    
+
     if (hasIfClause) {
       EmitBranch(ContBlock);
       EmitBlock(ContBlock, true);
     }
-    
+
   }
 }
 

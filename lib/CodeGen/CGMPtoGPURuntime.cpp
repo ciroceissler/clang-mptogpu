@@ -71,6 +71,13 @@ CGMPtoGPURuntime::CreateRuntimeFunction(MPtoGPURTLFunction Function) {
     RTLFn = CGM.CreateRuntimeFunction(FnTy, "_set_default_device");
     break;
   }
+  case MPtoGPURTL_set_hwlib: {
+    // Build void _set_hwlib(char* str);
+    llvm::FunctionType *FnTy =
+      llvm::FunctionType::get(CGM.Int32Ty, CGM.Int8PtrTy, false);
+    RTLFn = CGM.CreateRuntimeFunction(FnTy, "_set_hwlib");
+    break;
+  }
   case MPtoGPURTL_get_num_devices: {
     // Build cl_uint _get_num_devices();
     llvm::FunctionType *FnTy =
@@ -234,7 +241,7 @@ CGMPtoGPURuntime::CreateRuntimeFunction(MPtoGPURTLFunction Function) {
       llvm::FunctionType::get(CGM.VoidTy, CGM.Int32Ty, false);
     RTLFn = CGM.CreateRuntimeFunction(FnTy, "_set_release_buffer");
     break;
-  }  
+  }
   }
   return RTLFn;
 }
@@ -258,6 +265,13 @@ CGMPtoGPURuntime::Set_default_device() {
   return CGM.CreateRuntimeFunction(
 	 llvm::TypeBuilder<_set_default_device, false>::get(CGM.getLLVMContext())
 	 , "_set_default_device");
+}
+
+llvm::Value*
+CGMPtoGPURuntime::Set_hwlib() {
+  return CGM.CreateRuntimeFunction(
+	 llvm::TypeBuilder<_set_hwlib, false>::get(CGM.getLLVMContext())
+	 , "_set_hwlib");
 }
 
 llvm::Value*

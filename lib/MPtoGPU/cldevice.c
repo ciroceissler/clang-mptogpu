@@ -73,7 +73,7 @@ void _clErrorCode(cl_int status) {
     case CL_BUILD_PROGRAM_FAILURE:                    code = "CL_BUILD_PROGRAM_FAILURE"; break;
     case CL_MAP_FAILURE:                              code = "CL_MAP_FAILURE"; break;
     case CL_MISALIGNED_SUB_BUFFER_OFFSET:             code = "CL_MISALIGNED_SUB_BUFFER_OFFSET"; break;
-    case CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST:code = "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST"; break;  
+    case CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST:code = "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST"; break;
     case CL_INVALID_VALUE:                            code = "CL_INVALID_VALUE"; break;
     case CL_INVALID_DEVICE_TYPE:                      code = "CL_INVALID_DEVICE_TYPE"; break;
     case CL_INVALID_PLATFORM:                         code = "CL_INVALID_PLATFORM"; break;
@@ -108,13 +108,15 @@ void _clErrorCode(cl_int status) {
     case CL_INVALID_BUFFER_SIZE:                      code = "CL_INVALID_BUFFER_SIZE"; break;
     case CL_INVALID_MIP_LEVEL:                        code = "CL_INVALID_MIP_LEVEL"; break;
     case CL_INVALID_GLOBAL_WORK_SIZE:                 code = "CL_INVALID_GLOBAL_WORK_SIZE"; break;
-    case CL_INVALID_PROPERTY:                         code = "CL_INVALID_PROPERTY";      
-    default:                                          code = "CL_UNKNOWN_ERROR_CODE";      
+#ifndef __ALTERA__
+    case CL_INVALID_PROPERTY:                         code = "CL_INVALID_PROPERTY";
+#endif  //  __ALTERA__
+    default:                                          code = "CL_UNKNOWN_ERROR_CODE";
     }
     fprintf(stderr, "<rtl> Error Code: %s\n", code);
   }
 }
-		     
+
 
 void _cldevice_details(cl_device_id   id,
                        cl_device_info param_name,
@@ -783,6 +785,13 @@ void _set_default_device (cl_uint id) {
 }
 
 //
+// Set the hardware library
+//
+void _set_hwlib(char* str) {
+  printf("<hwlib> initial test! Value = %s\n", str);
+}
+
+//
 // Auxiliary Function. Increments the current Id. Resize the room if necessary
 //
 void _inc_curid () {
@@ -984,7 +993,7 @@ int _cl_write_buffer (uint64_t size, int id, void* loc) {
 				 0,
 				 NULL,
 				 (_profile) ? &_global_event : NULL);
-  
+
   if (_status != CL_SUCCESS) {
     fprintf(stderr, "<rtl> Failed writing %llu bytes into buffer %d.\n", size, id);
     _clErrorCode (_status);
@@ -1212,7 +1221,7 @@ int _cl_execute_kernel(uint64_t size1, uint64_t size2, uint64_t size3, int dim) 
     if (_profile) {
       _cl_profile("_cl_execute_kernel", _global_event);
     }
-    if (_verbose) {    
+    if (_verbose) {
       printf("<rtl> %s has been running successfully.\n", _strprog[_kerid]);
     }
     return 1;

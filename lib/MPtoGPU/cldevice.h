@@ -84,6 +84,8 @@ cl_uint _get_default_device ();
 
 void _set_default_device (cl_uint id);
 
+void _set_hwlib(char* str);
+
 int _cl_create_read_only (uint64_t size);
 
 int _cl_create_write_only (uint64_t size);
